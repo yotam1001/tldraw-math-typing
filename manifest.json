@@ -1,13 +1,52 @@
 {
   "manifest_version": 3,
   "name": "tldraw Math Typing",
-  "version": "1.0.0",
-  "description": "Auto-replaces math shortcuts while typing in tldraw text: sqrt → √, x^2 → x², 3//4 → ¾, * → ×, and more.",
+  "version": "1.4.3",
+  "description": "Math for tldraw: typing shortcuts (sqrt → √, x^2 → x², alpha → α), real stacked fractions and equations, and a calculator, grapher and shape drawer you type into text boxes.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": ["storage", "scripting"],
+  "background": {
+    "scripts": ["background.js"],
+    "service_worker": "background.js"
+  },
+  "host_permissions": ["https://tldraw.com/*", "https://*.tldraw.com/*"],
+  "action": {
+    "default_title": "Math Typing",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
   "content_scripts": [
     {
       "matches": ["https://tldraw.com/*", "https://*.tldraw.com/*"],
-      "js": ["content.js"],
+      "js": [
+        "rules.js", "fonts.js",
+        "vendor/nerdamer/nerdamer.core.js", "vendor/nerdamer/Algebra.js",
+        "vendor/nerdamer/Calculus.js", "vendor/nerdamer/Solve.js",
+        "mathtools.js", "content.js"
+      ],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://tldraw.com/*", "https://*.tldraw.com/*"],
+      "js": ["page.js"],
+      "world": "MAIN",
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "tldraw-math-typing@local",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": { "required": ["none"] }
+    }
+  }
 }

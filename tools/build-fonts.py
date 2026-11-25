@@ -1,0 +1,120 @@
+"""Builds fonts.js: the fallback font subsets (inlined) and which characters each covers.
+
+tldraw's four fonts (draw = Shantell Sans, sans/serif/mono = IBM Plex) lack many math symbols.
+Without help the browser fills each gap from whatever system font it finds, so a line of maths
+mixes several fonts. This picks, per tldraw font, which characters get a fallback font:
+
+  1. A character tldraw's font has stays in that font, so ×, ±, ≤, →, √, π, Greek and digits
+     keep the handwritten (or Plex) look of the rest of the text.
+  2. A character it lacks (∈ ⊆ ℝ ∀ ⇒ ≡ …) always comes from Noto Sans Math, one consistent
+     math font, instead of a random system font.
+  3. Every superscript, subscript and the fraction slash comes from Noto Sans (Noto Serif for
+     the serif font), even where tldraw's font has some of them: it has ¹²³ but not ⁻ ⁺ ⁿ ˣ,
+     so x⁻¹² would mix two fonts and two sizes inside one exponent.
+  4. Letters a tldraw font lacks (Greek in Shantell Sans and Plex Mono) come from Noto Sans/Serif,
+     which match text better than a math font. For the handwriting font these use bold Noto Sans to
+     match its heavy strokes. Noto Sans Math only comes in one weight, so math symbols stay regular.
+
+Usage:
+  python tools/build-fonts.py <tldraw fonts dir> <NotoSansMath> <NotoSans 500> <NotoSerif 500> <NotoSans 700>
+The tldraw fonts dir holds Shantell_Sans-*, IBMPlexSans-*, IBMPlexSerif-*, IBMPlexMono-* files.
+Needs: pip install fonttools brotli
+"""
+import glob
+import json
+import os
+import subprocess
+import sys
+
+from fontTools import subset
+from fontTools.ttLib import TTFont
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+tl_dir, math_src, sans_src, serif_src, bold_src = sys.argv[1:6]
+
+chars = json.loads(subprocess.check_output(['node', os.path.join(ROOT, 'tools', 'chars.js')], cwd=ROOT))
+cps = sorted({ord(c) for c in chars})
+
+SCRIPTS = {ord(c) for c in '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻ₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ⁄'}
+TL = {'draw': 'Shantell_Sans', 'sans': 'IBMPlexSans', 'serif': 'IBMPlexSerif', 'mono': 'IBMPlexMono'}
+
+
+def cmap(path):
+    return set(TTFont(path).getBestCmap().keys())
+
+
+def tl_cmap(prefix):
+    files = [f for f in glob.glob(os.path.join(tl_dir, prefix + '-*')) if 'Italic' not in f and 'Bold' not in f]
+    assert files, f'no tldraw font file for {prefix} in {tl_dir}'
+    return cmap(files[0])
+
+
+math_cov, sans_cov, serif_cov = cmap(math_src), cmap(sans_src), cmap(serif_src)
+
+
+def ranges(points):
+    points = sorted(points)
+    out, i = [], 0
+    while i < len(points):
+        j = i
+        while j + 1 < len(points) and points[j + 1] == points[j] + 1:
+            j += 1
+        out.append(f'U+{points[i]:04X}' if i == j else f'U+{points[i]:04X}-{points[j]:04X}')
+        i = j + 1
+    return ', '.join(out)
+
+
+faces, need = {}, {'math.woff2': set(), 'text-sans.woff2': set(), 'text-serif.woff2': set(), 'text-draw.woff2': set()}
+report = []
+for name, prefix in TL.items():
+    have = tl_cmap(prefix)
+    missing = {c for c in cps if c not in have}
+    # The handwriting font has heavy strokes, so its exponents and Greek use bold Noto Sans.
+    text_file, text_cov = {'serif': ('text-serif.woff2', serif_cov), 'draw': ('text-draw.woff2', sans_cov)}.get(
+        name, ('text-sans.woff2', sans_cov))
+    to_text = {c for c in cps if c in SCRIPTS} | {c for c in missing - SCRIPTS if c not in math_cov}
+    to_math = {c for c in missing - SCRIPTS if c in math_cov}
+    # Letters (Greek etc.) read better in the text font than the math font.
+    letters = {c for c in to_math if chr(c).isalpha() and c in text_cov and not 0x2100 <= c <= 0x214F}
+    to_math -= letters
+    to_text |= letters
+    to_text &= text_cov
+    uncovered = {c for c in missing if c not in to_math and c not in to_text}
+    faces[name] = [
+        {'file': 'math.woff2', 'range': ranges(to_math)},
+        {'file': text_file, 'range': ranges(to_text)},
+    ]
+    need['math.woff2'] |= to_math
+    need[text_file] |= to_text
+    report.append(f'{name}: {len(to_math)} from Noto Sans Math, {len(to_text)} from {text_file}, '
+                  f'{len(have & set(cps))} kept in tldraw font, uncovered: {"".join(map(chr, sorted(uncovered))) or "none"}')
+
+import base64
+import io
+
+data = {}
+for out, src in [('math.woff2', math_src), ('text-sans.woff2', sans_src), ('text-serif.woff2', serif_src),
+                 ('text-draw.woff2', bold_src)]:
+    opts = subset.Options()
+    opts.flavor = 'woff2'
+    opts.layout_features = ['*']
+    opts.name_IDs = ['*']
+    opts.notdef_outline = True
+    font = subset.load_font(src, opts)
+    sub = subset.Subsetter(opts)
+    sub.populate(unicodes=sorted(need[out]))
+    sub.subset(font)
+    buf = io.BytesIO()
+    font.flavor = 'woff2'
+    font.save(buf)
+    data[out] = base64.b64encode(buf.getvalue()).decode('ascii')
+
+with open(os.path.join(ROOT, 'fonts.js'), 'w', encoding='utf8') as f:
+    f.write('// Generated by tools/build-fonts.py. Which characters each tldraw font gets from a\n')
+    f.write('// fallback font. See that script for the reasoning.\n')
+    f.write('// The font data are subsets of Noto Sans Math, Noto Sans and Noto Serif (SIL Open Font\n')
+    f.write('// License 1.1, see fonts/OFL.txt), inlined as base64 woff2.\n')
+    f.write('globalThis.MathTypingFonts = ' + json.dumps({'faces': faces, 'files': data}, indent=2) + ';\n')
+print('\n'.join(report))
+for out in data:
+    print(out, len(data[out]) * 3 // 4, 'bytes')

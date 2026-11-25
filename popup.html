@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>tldraw Math Typing</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon.svg" alt="" class="logo">
+    <div class="title">
+      <h1>Math Typing</h1>
+      <p id="status">On for tldraw.com</p>
+    </div>
+    <label class="switch big" title="Alt+M on the page does the same">
+      <input type="checkbox" id="enabled">
+      <span class="track"><span class="thumb"></span></span>
+    </label>
+  </header>
+
+  <div id="access" class="banner" hidden>
+    <div>
+      <strong>Needs your OK</strong>
+      <p>Zen hasn't let Math Typing run on tldraw.com yet.</p>
+    </div>
+    <button id="grant" class="primary">Allow</button>
+  </div>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="sheet" class="active">Shortcuts</button>
+    <button role="tab" data-tab="tools">Tools</button>
+    <button role="tab" data-tab="custom">Mine</button>
+    <button role="tab" data-tab="settings">Settings</button>
+  </nav>
+
+  <main>
+    <section id="sheet" class="tab active">
+      <div class="search">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4 4"/></svg>
+        <input type="search" id="search" placeholder="Search: theta, arrow, ∈, frac…" autocomplete="off">
+      </div>
+      <div id="chips" class="chips"></div>
+      <div id="sheet-list" class="list"></div>
+    </section>
+
+    <section id="tools" class="tab">
+      <p class="lead">Type in a text box. Nothing is drawn or worked out until you ask with a <kbd>/</kbd> command.</p>
+      <div id="tool-cards"></div>
+    </section>
+
+    <section id="custom" class="tab">
+      <p class="lead">Your own shortcuts. Letter-only ones change after a space; ones with symbols change at once.</p>
+      <form id="custom-form" class="add">
+        <input id="custom-from" placeholder="Type" required autocomplete="off">
+        <span class="arrow">→</span>
+        <input id="custom-to" placeholder="Get" required autocomplete="off">
+        <button type="submit" class="primary">Add</button>
+      </form>
+      <ul id="custom-list" class="list"></ul>
+    </section>
+
+    <section id="settings" class="tab">
+      <h2>While typing</h2>
+      <div class="rows">
+        <label class="row"><span>Show suggestions <small>Tab to use one</small></span>
+          <span class="switch"><input type="checkbox" id="opt-hints"><span class="track"><span class="thumb"></span></span></span></label>
+        <label class="row"><span>Match symbols to tldraw's fonts <small>one font for ∈ ℝ ⇒, even exponents</small></span>
+          <span class="switch"><input type="checkbox" id="opt-fonts"><span class="track"><span class="thumb"></span></span></span></label>
+      </div>
+      <h2>Cursor</h2>
+      <div class="rows">
+        <label class="row"><span>Bring the crosshair back after typing <small>for a crosshair that vanishes now and then</small></span>
+          <span class="switch"><input type="checkbox" id="opt-cursorKick"><span class="track"><span class="thumb"></span></span></span></label>
+        <label class="row"><span>Use the plain system crosshair <small>if it still vanishes</small></span>
+          <span class="switch"><input type="checkbox" id="opt-systemCursor"><span class="track"><span class="thumb"></span></span></span></label>
+      </div>
+      <h2>Shortcut groups</h2>
+      <div id="categories" class="rows"></div>
+      <p class="note">Backspace right after a change puts back what you typed. Drawn equations are
+        grouped shapes; Ctrl+Z takes them back.</p>
+    </section>
+  </main>
+
+  <footer><span><kbd>Alt</kbd>+<kbd>M</kbd> turns it on or off on the page</span><span id="version"></span></footer>
+
+  <script src="rules.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+/* tldraw Math Typing: put the fallback faces (see fonts.js) in front of tldraw's fonts.
+   They only cover characters the tldraw font lacks, plus exponents and indices, so all other
+   text still draws in tldraw's own font.
+   tldraw sets the font inline on each text box and on its hidden text-measuring element
+   (style="font-family: tldraw_draw, …"), so those are matched by their inline style. */
+html.mathtyping-fonts [style*="tldraw_draw"] { font-family: "mathtyping_draw", "tldraw_draw", sans-serif !important; }
+html.mathtyping-fonts [style*="tldraw_sans"] { font-family: "mathtyping_sans", "tldraw_sans", sans-serif !important; }
+html.mathtyping-fonts [style*="tldraw_serif"] { font-family: "mathtyping_serif", "tldraw_serif", serif !important; }
+html.mathtyping-fonts [style*="tldraw_mono"] { font-family: "mathtyping_mono", "tldraw_mono", monospace !important; }
+
+/* Crosshair fixes. Windows can hide the pointer while you type, and Firefox may not bring
+   tldraw's image cursor back until the cursor changes. */
+html.mathtyping-cursor-kick .tl-canvas { cursor: crosshair !important; }
+html.mathtyping-system-cursor .tl-container { --tl-cursor-cross: crosshair !important; }
+
+/* and anything that reads tldraw's font variables */
+html.mathtyping-fonts .tl-container {
+  --tl-font-draw: "mathtyping_draw", "tldraw_draw", sans-serif !important;
+  --tl-font-sans: "mathtyping_sans", "tldraw_sans", sans-serif !important;
+  --tl-font-serif: "mathtyping_serif", "tldraw_serif", serif !important;
+  --tl-font-mono: "mathtyping_mono", "tldraw_mono", monospace !important;
+}
